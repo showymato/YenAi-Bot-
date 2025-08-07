@@ -16,7 +16,7 @@ app.use(express.static('public'));
 
 class AdvancedCryptoBot {
   constructor() {
-    this.exchange = new ccxt.binance();
+    this.exchange = new ccxt.kraken();
     this.watchlist = [];
     this.portfolio = {};
     this.alerts = [];
@@ -268,8 +268,8 @@ class AdvancedCryptoBot {
   async getTopPerformers() {
     try {
       const tickers = await this.exchange.fetchTickers();
-      const usdtPairs = Object.entries(tickers)
-        .filter(([symbol, data]) => symbol.includes('/USDT') && data.percentage !== null)
+      const usdPairs = Object.entries(tickers)
+        .filter(([symbol, data]) => symbol.includes('/USD') && data.percentage !== null)
         .map(([symbol, data]) => ({
           symbol,
           price: data.last,
@@ -279,7 +279,7 @@ class AdvancedCryptoBot {
         .sort((a, b) => (b.change24h || 0) - (a.change24h || 0))
         .slice(0, 20);
 
-      return usdtPairs;
+      return usdPairs;
     } catch (error) {
       console.error('Error fetching top performers:', error);
       return [];
@@ -308,7 +308,21 @@ const cryptoBot = new AdvancedCryptoBot();
 
 // Routes
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.json({
+    message: 'Advanced Crypto Bot API',
+    version: '1.0.0',
+    endpoints: {
+      analyze: 'POST /api/analyze',
+      topPerformers: 'GET /api/top-performers',
+      fearGreed: 'GET /api/fear-greed',
+      watchlist: {
+        get: 'GET /api/watchlist',
+        add: 'POST /api/watchlist/add',
+        remove: 'DELETE /api/watchlist/:symbol',
+        analysis: 'GET /api/watchlist/analysis'
+      }
+    }
+  });
 });
 
 app.post('/api/analyze', async (req, res) => {

@@ -3,18 +3,9 @@ const cors = require('cors');
 const axios = require('axios');
 const ccxt = require('ccxt');
 const path = require('path');
-const http = require('http');
-const socketIo = require('socket.io');
 const TI = require('technicalindicators');
 
 const app = express();
-const server = http.createServer(app);
-const io = socketIo(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
-  }
-});
 
 const PORT = process.env.PORT || 3000;
 
@@ -366,37 +357,27 @@ app.get('/api/watchlist', (req, res) => {
   res.json(cryptoBot.watchlist);
 });
 
-// Socket.IO for real-time updates
-io.on('connection', (socket) => {
-  console.log('Client connected:', socket.id);
-
-  socket.on('subscribe-watchlist', () => {
-    const updateWatchlist = async () => {
-      const watchlistData = [];
-      for (const symbol of cryptoBot.watchlist) {
-        try {
-          const analysis = await cryptoBot.analyzeCoin(symbol);
-          if (analysis) {
-            watchlistData.push(analysis);
-          }
-        } catch (error) {
-          console.error(`Error updating ${symbol}:`, error);
+// Get watchlist analysis
+app.get('/api/watchlist/analysis', async (req, res) => {
+  try {
+    const watchlistData = [];
+    for (const symbol of cryptoBot.watchlist) {
+      try {
+        const analysis = await cryptoBot.analyzeCoin(symbol);
+        if (analysis) {
+          watchlistData.push(analysis);
         }
+      } catch (error) {
+        console.error(`Error analyzing ${symbol}:`, error);
       }
-      socket.emit('watchlist-update', watchlistData);
-    };
-
-    updateWatchlist();
-    const interval = setInterval(updateWatchlist, 30000); // Update every 30 seconds
-
-    socket.on('disconnect', () => {
-      clearInterval(interval);
-      console.log('Client disconnected:', socket.id);
-    });
-  });
+    }
+    res.json(watchlistData);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
-server.listen(PORT, () => {
+app.listen(PORT, () => {
   console.log(`🚀 Advanced Crypto Bot Server running on port ${PORT}`);
-  console.log(`📊 Dashboard: http://localhost:${PORT}`);
+  console.log(`📊 API available at: http://localhost:${PORT}/api`);
 });
